@@ -33,7 +33,7 @@ exports.getCars = async (req, res) => {
 
         // Logic for Homepage (Top 3 Latest)
         if (latest === "true") {
-            const latestCars = await Car.find().sort({ createdAt: -1 }).limit(3);
+            const latestCars = await Car.find().sort({ createdAt: -1 }).limit(6);
             return res.status(200).json(latestCars);
         }
 

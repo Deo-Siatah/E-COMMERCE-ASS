@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import Home from "./pages/Homepage";
 import Services from "./pages/Services";
 import Login from "./pages/Login";
@@ -11,6 +12,7 @@ import CarDetails from "./pages/CarDetails";
 import Inventory from "./pages/Inventory";
 import Cart from "./pages/Cart"
 import Profile from "./pages/Profile"
+import Orders from "./pages/Orders";
 
 // Helper to decode JWT
 const getUserIdFromToken = (token) => {
@@ -96,6 +98,10 @@ function App() {
               element={token ? <Profile logout={() => handleSetToken(null)} /> : <Navigate to="/login" />} 
             />
             <Route 
+              path="/orders" 
+              element={token ? <Orders /> : <Navigate to="/login" />} 
+            />
+            <Route 
               path="/login" 
               element={!token ? <Login setAuthToken={handleSetToken} /> : <Navigate to="/manage" />} 
             />
@@ -112,6 +118,7 @@ function App() {
           </Routes>
         </main>
         <Toaster richColors position="top-right" theme={theme} />
+      <Footer/>
       </div>
     </Router>
   );
