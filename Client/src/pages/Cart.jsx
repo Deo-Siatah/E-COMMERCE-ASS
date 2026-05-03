@@ -2,14 +2,17 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getCart, removeFromCart, clearCart } from "../api/cart";
 import { toast } from "sonner";
-import { Loader2, Trash2, ShoppingBag, ArrowRight, ShieldCheck, CreditCard ,ShoppingCart} from "lucide-react";
+import { 
+  Loader2, Trash2, ShoppingBag, ArrowRight, 
+  ShieldCheck, CreditCard, ShoppingCart, CheckCircle2, PartyPopper 
+} from "lucide-react";
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false); // New state for success page
 
-  // We grab the token directly from local storage for API calls
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -23,7 +26,6 @@ const Cart = () => {
     }
     try {
       const data = await getCart(token);
-      // Assuming your backend populates the car details in an array called 'items' or similar
       setCartItems(data.items || data.cars || []); 
     } catch (error) {
       console.error(error);
@@ -43,12 +45,13 @@ const Cart = () => {
     }
   };
 
-  const handleClearCart = async () => {
-    if (!window.confirm("Are you sure you want to clear your garage?")) return;
+  // Modified to allow silent clearing after checkout
+  const handleClearCart = async (showConfirm = true) => {
+    if (showConfirm && !window.confirm("Are you sure you want to clear your garage?")) return;
     try {
       await clearCart(token);
       setCartItems([]);
-      toast.success("Garage cleared.");
+      if (showConfirm) toast.success("Garage cleared.");
     } catch (error) {
       toast.error("Failed to clear garage.");
     }
@@ -59,15 +62,25 @@ const Cart = () => {
     // Simulate checkout delay
     setTimeout(() => {
       setIsProcessing(false);
-      toast.success("Checkout successful! Our dealer will contact you shortly.");
-      handleClearCart(); // Optional: clear cart after successful checkout
+      setIsSuccess(true); // Show success screen
+      handleClearCart(false); // Clear cart silently
+      toast.success("Reservation Secured!");
     }, 2000);
   };
 
-  // Calculate Subtotal (assuming data structure is item.car.price)
   const subtotal = cartItems.reduce((total, item) => total + (item.car?.price || 0), 0);
-  const reservationFee = cartItems.length > 0 ? 50000 : 0; // Flat fee to reserve vehicles
+  const reservationFee = cartItems.length > 0 ? 2300000 : 0;
 
+  // 1. Loading State
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center dark:bg-gray-950">
+        <Loader2 className="animate-spin text-emerald-500" size={48} />
+      </div>
+    );
+  }
+
+  // 2. Auth State
   if (!token) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-gray-950 pt-24">
@@ -80,14 +93,39 @@ const Cart = () => {
     );
   }
 
-  if (isLoading) {
+  // 3. Success Page State
+  if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center dark:bg-gray-950">
-        <Loader2 className="animate-spin text-emerald-500" size={48} />
+      <div className="min-h-screen bg-slate-50 dark:bg-gray-950 pt-32 pb-20 flex items-center justify-center px-6">
+        <div className="max-w-2xl w-full bg-white dark:bg-gray-900 rounded-[3rem] border border-emerald-100 dark:border-emerald-900/30 p-12 text-center shadow-2xl shadow-emerald-500/10">
+          <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-8 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 size={56} />
+          </div>
+          <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-4">Payment Successful!</h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+            Your reservation is confirmed. We've sent a receipt to your email, and a dealer representative will call you within 24 hours to finalize the paperwork.
+          </p>
+          <div className="bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl p-6 mb-10 flex items-center gap-4 text-left">
+            <PartyPopper className="text-emerald-600" size={32} />
+            <div>
+              <p className="font-bold text-emerald-900 dark:text-emerald-100">Order ID: #REV-{Math.floor(100000 + Math.random() * 900000)}</p>
+              <p className="text-sm text-emerald-700 dark:text-emerald-400">The vehicles have been moved to your "Reserved" list.</p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/cars" className="bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-emerald-500 transition-all hover:scale-105">
+              Continue Shopping
+            </Link>
+            <Link to="/profile" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white px-8 py-4 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all">
+              View My Orders
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // 4. Main Cart View
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-950 pt-24 pb-20 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -103,7 +141,7 @@ const Cart = () => {
           </div>
           {cartItems.length > 0 && (
             <button 
-              onClick={handleClearCart}
+              onClick={() => handleClearCart(true)}
               className="text-red-500 hover:text-red-600 font-semibold text-sm transition-colors"
             >
               Clear All
@@ -131,12 +169,10 @@ const Cart = () => {
             <div className="lg:col-span-2 space-y-6">
               {cartItems.map((item) => {
                 const car = item.car;
-                if (!car) return null; // Safety check
+                if (!car) return null;
                 
                 return (
                   <div key={car._id} className="bg-white dark:bg-gray-900 p-4 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col sm:flex-row gap-6 items-center relative overflow-hidden group">
-                    
-                    {/* Image */}
                     <div className="w-full sm:w-48 h-32 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0">
                       <img 
                         src={car.images?.[0] || "https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg"} 
@@ -145,7 +181,6 @@ const Cart = () => {
                       />
                     </div>
 
-                    {/* Details */}
                     <div className="flex-grow text-center sm:text-left">
                       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
                         {car.year} {car.make} {car.model}
@@ -156,7 +191,6 @@ const Cart = () => {
                       </p>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex sm:flex-col gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                       <Link 
                         to={`/cars/${car._id}`}
@@ -214,13 +248,12 @@ const Cart = () => {
 
                 <div className="mt-6 flex items-start gap-3 bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl">
                   <ShieldCheck className="text-emerald-600 flex-shrink-0 mt-0.5" size={20} />
-                  <p className="text-xs text-emerald-800 dark:text-emerald-400 font-medium">
+                  {/* <p className="text-xs text-emerald-800 dark:text-emerald-400 font-medium">
                     Your payments are secured with 256-bit encryption. The dealer will contact you to finalize the remaining balance.
-                  </p>
+                  </p> */}
                 </div>
               </div>
             </div>
-
           </div>
         )}
       </div>
